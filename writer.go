@@ -7,12 +7,6 @@ import (
 	"text/template"
 )
 
-// test constats
-const (
-	A = iota
-	B
-)
-
 // WriteMDTemplate creates a markdown output using an template
 func WriteMDTemplate(idx *PackageIndex, outPath string) error {
 

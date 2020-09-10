@@ -189,7 +189,7 @@ func anchorID(line string) string {
 // begins with a capital letter, and contains no punctuation
 // is formatted as a heading.
 //
-// A span of indented lines is converted into a <pre> block,
+// A span of indented lines is converted into a pre block,
 // with the common indent prefix removed.
 //
 // URLs in the comment text are converted into links.
