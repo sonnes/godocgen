@@ -13,8 +13,8 @@ import (
 	"unicode/utf8"
 )
 
-func parseFiles(fs *token.FileSet, path string, localnames []string) (map[string]*ast.File, error) {
-	files := make(map[string]*ast.File)
+func parseFiles(fs *token.FileSet, path string, localnames []string) ([]*ast.File, error) {
+	files := make([]*ast.File, 0)
 	for _, f := range localnames {
 		absname := pathpkg.Join(path, f)
 
@@ -28,7 +28,7 @@ func parseFiles(fs *token.FileSet, path string, localnames []string) (map[string
 			return nil, err
 		}
 
-		files[pathpkg.Join(path, f)] = file
+		files = append(files, file)
 	}
 
 	return files, nil
@@ -49,6 +49,10 @@ func globalNames(pkg *ast.Package) map[string]bool {
 // addNames adds the names declared by decl to the names set.
 // Method names are added in the form ReceiverTypeName_Method.
 func addNames(names map[string]bool, decl ast.Decl) {
+	names[getGlobalName(decl)] = true
+}
+
+func getGlobalName(decl ast.Decl) string {
 	switch d := decl.(type) {
 	case *ast.FuncDecl:
 		name := d.Name.Name
@@ -62,19 +66,21 @@ func addNames(names map[string]bool, decl ast.Decl) {
 			}
 			name = typeName + "_" + name
 		}
-		names[name] = true
+		return name
 	case *ast.GenDecl:
 		for _, spec := range d.Specs {
 			switch s := spec.(type) {
 			case *ast.TypeSpec:
-				names[s.Name.Name] = true
+				return s.Name.Name
 			case *ast.ValueSpec:
 				for _, id := range s.Names {
-					names[id.Name] = true
+					return id.Name
 				}
 			}
 		}
 	}
+
+	return "-"
 }
 
 func startsWithUppercase(s string) bool {
@@ -119,4 +125,15 @@ func poorMansImporter(imports map[string]*ast.Object, path string) (*ast.Object,
 		imports[path] = pkg
 	}
 	return pkg, nil
+}
+
+func formatExampleName(s string) string {
+	name, suffix := splitExampleName(s)
+	// replace _ with . for method names
+	name = strings.Replace(name, "_", ".", 1)
+	// use "Package" if no name provided
+	if name == "" {
+		name = "Package"
+	}
+	return name + suffix
 }

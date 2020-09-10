@@ -2,11 +2,11 @@ package godocgen
 
 import (
 	"bytes"
-	"go/ast"
 	"go/build"
 	"go/doc"
 	"go/printer"
 	"go/token"
+	"strings"
 )
 
 // GetPackageIndex parses and returns all the documentation content in a package
@@ -29,6 +29,8 @@ func GetPackageIndex(src string) (*PackageIndex, error) {
 
 	// collect source files
 	pkgfiles := append(pkginfo.GoFiles, pkginfo.CgoFiles...)
+	pkgfiles = append(pkgfiles, pkginfo.TestGoFiles...)
+	pkgfiles = append(pkgfiles, pkginfo.XTestGoFiles...)
 
 	files, err := parseFiles(fset, src, pkgfiles)
 
@@ -41,19 +43,54 @@ func GetPackageIndex(src string) (*PackageIndex, error) {
 	}
 
 	// ignore any errors - they are due to unresolved identifiers
-	pkg, _ := ast.NewPackage(fset, files, poorMansImporter, nil)
+	pkgdoc, err := doc.NewFromFiles(fset, files, "test.com/", doc.AllMethods)
 
-	// get documentation
-	pkgdoc := doc.New(pkg, src, doc.AllMethods)
+	if err != nil {
+		return nil, err
+	}
 
 	idx := &PackageIndex{
 		Dir:      src,
 		Name:     pkgdoc.Name,
 		Doc:      pkgdoc.Doc,
 		Consts:   []Const{},
+		Vars:     []Var{},
 		Funcs:    []Func{},
 		Types:    []Type{},
 		Examples: []Example{},
+	}
+
+	// extract example first
+	for _, e := range doc.Examples(files...) {
+
+		s := bytes.NewBufferString("")
+		printer.Fprint(s, fset, e.Code)
+
+		forFunc, suffix := splitExampleName(e.Name)
+
+		example := Example{
+			Name:    formatExampleName(e.Name),
+			ForFunc: forFunc,
+			Suffix:  strings.TrimSpace(suffix),
+			Doc:     e.Doc,
+			Snippet: s.String(),
+			Output:  e.Output,
+		}
+
+		idx.Examples = append(idx.Examples, example)
+	}
+
+	// package level constants
+	for _, pvar := range pkgdoc.Vars {
+		s := bytes.NewBufferString("")
+		printer.Fprint(s, fset, pvar.Decl)
+
+		v := Var{
+			Doc:     pvar.Doc,
+			Snippet: s.String(),
+		}
+
+		idx.Vars = append(idx.Vars, v)
 	}
 
 	// package level constants
@@ -70,7 +107,7 @@ func GetPackageIndex(src string) (*PackageIndex, error) {
 	}
 
 	// package level functions
-	idx.Funcs = collectFuncs(fset, pkgdoc.Funcs)
+	idx.Funcs = collectFuncs(fset, pkgdoc.Funcs, idx.Examples)
 
 	// package level types
 	for _, ptype := range pkgdoc.Types {
@@ -81,22 +118,17 @@ func GetPackageIndex(src string) (*PackageIndex, error) {
 			Name:    ptype.Name,
 			Doc:     ptype.Doc,
 			Snippet: s.String(),
-			Methods: collectFuncs(fset, ptype.Methods),
+			Methods: collectFuncs(fset, ptype.Methods, idx.Examples),
+			Funcs:   collectFuncs(fset, ptype.Funcs, idx.Examples),
 		}
 
 		idx.Types = append(idx.Types, t)
 	}
 
-	// get examples
-	testfiles := append(pkginfo.TestGoFiles, pkginfo.XTestGoFiles...)
-	files, _ = parseFiles(fset, src, testfiles)
-
-	idx.Examples = collectExamples(fset, pkg, files)
-
 	return idx, nil
 }
 
-func collectFuncs(fset *token.FileSet, docFuncs []*doc.Func) []Func {
+func collectFuncs(fset *token.FileSet, docFuncs []*doc.Func, examples []Example) []Func {
 	funcs := []Func{}
 
 	for _, pfunc := range docFuncs {
@@ -110,37 +142,18 @@ func collectFuncs(fset *token.FileSet, docFuncs []*doc.Func) []Func {
 			Snippet: s.String(),
 		}
 
+		globalName := getGlobalName(pfunc.Decl)
+
+		for _, e := range examples {
+			if e.ForFunc != globalName {
+				continue
+			}
+
+			f.Examples = append(f.Examples, e)
+		}
+
 		funcs = append(funcs, f)
 	}
 
 	return funcs
-}
-
-func collectExamples(fset *token.FileSet, pkg *ast.Package, testfiles map[string]*ast.File) []Example {
-	var files []*ast.File
-	for _, f := range testfiles {
-		files = append(files, f)
-	}
-
-	var examples []Example
-	globals := globalNames(pkg)
-	for _, e := range doc.Examples(files...) {
-		name := stripExampleSuffix(e.Name)
-		if name == "" || globals[name] {
-
-			s := bytes.NewBufferString("")
-			printer.Fprint(s, fset, e.Code)
-
-			example := Example{
-				Name:    e.Name,
-				Suffix:  e.Suffix,
-				Doc:     e.Doc,
-				Snippet: s.String(),
-			}
-
-			examples = append(examples, example)
-		}
-	}
-
-	return examples
 }

@@ -3,6 +3,8 @@ package godocgen
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
+	"text/template"
 )
 
 // test constats
@@ -10,6 +12,22 @@ const (
 	A = iota
 	B
 )
+
+// WriteMDTemplate creates a markdown output using an template
+func WriteMDTemplate(idx *PackageIndex, outPath string) error {
+
+	t, err := template.New("package.md").Funcs(funcs).Parse(pkgTemplate)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.Create(outPath)
+	if err != nil {
+		return err
+	}
+
+	return t.Execute(f, idx)
+}
 
 // WriteMarkdown writes indexed documents as markdown content
 func WriteMarkdown(idx *PackageIndex, outPath string) error {
