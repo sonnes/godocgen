@@ -42,6 +42,12 @@ setup-local: ##@development installs all required dependencies for local develop
 
 
 # RELEASE 		###########################################################################################
+VERSION=$(shell git describe --tags)
+TIME=$(shell date +%FT%T%z)
+LDFLAGS=-ldflags "-w -s -X github.com/sonnes/godocgen/version.BuildVersion=${VERSION} -X github.com/sonnes/godocgen/version.BuildTime=${TIME}"
+
+build: ##@release Creates a binary 
+	go build ${LDFLAGS} -o $(GOPATH)/bin/godocgen cmd/godocgen/*.go 
 
 lint: ##@release Runs linting using golangci-lint
 	golangci-lint run
@@ -57,25 +63,4 @@ release-major:
 
 version:
 	./scripts/semtag get
-
-
-# TESTS 		###########################################################################################
-
-test: lint ##@tests run tests
-	go mod tidy
-	mkdir -p coverage
-	gotest -race -p=1 -v  -cover -coverprofile=coverage/coverage-all.out $(ALL_PACKAGES)
-
-coverage: ##@tests generates and opens coverage report
-	mkdir -p coverage
-	@echo "mode: count" > coverage/coverage-all.out
-	$(foreach pkg, $(ALL_PACKAGES),\
-	go test -p=1 -coverprofile=coverage/coverage.out -covermode=count $(pkg);\
-	tail -n +2 coverage/coverage.out >> coverage/coverage-all.out;)
-	go tool cover -html=coverage/coverage-all.out -o coverage/coverage.html
-	open coverage/coverage.html
-
-.PHONY: coverage lint
-
-# CI			###########################################################################################		
 

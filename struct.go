@@ -6,6 +6,7 @@ type PackageIndex struct {
 	Dir  string
 	Doc  string
 
+	Vars     []Var
 	Consts   []Const
 	Funcs    []Func
 	Types    []Type
@@ -14,6 +15,12 @@ type PackageIndex struct {
 
 // Const is a single or a block of constants in a package
 type Const struct {
+	Doc     string
+	Snippet string
+}
+
+// Var is a single or a block of variables in a package
+type Var struct {
 	Doc     string
 	Snippet string
 }
@@ -41,7 +48,9 @@ type Type struct {
 // Example demonstrates use of functions & types in a package
 type Example struct {
 	Name    string
+	ForFunc string
 	Suffix  string
 	Doc     string
 	Snippet string
+	Output  string
 }
