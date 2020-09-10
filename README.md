@@ -7,15 +7,19 @@ This tool helps you in creating & maintaining documentation for your private Go 
 ## Usage
 
 ```
-$ godocgen markdown
+$ godocgen
 NAME:
-   commands markdown - generates markdown documentation for all packages in `src` folder
+   godocgen - Document & maintain your Go documentation in markdown files
 
 USAGE:
-   commands markdown [command options] [arguments...]
+   godocgen [global options] command [command options] [arguments...]
 
-OPTIONS:
-   --source value, --src value   path to packages that have to be documented
-   --markdown value, --md value  name of markdown file to output to (default: "GODOC.md")
-   --help, -h                    show help (default: false)
+COMMANDS:
+   help, h  Shows a list of commands or help for one command
+
+GLOBAL OPTIONS:
+   --source value, --src value  path to packages that have to be documented
+   --name value                 name of markdown file to output to (default: "GODOC.md")
+   --help, -h                   show help (default: false)
+godocgen version
 ```
