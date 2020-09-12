@@ -23,11 +23,10 @@ var pkgTemplate = `
 * [{{.Name}}](#example-{{ .Name | slugify }}){{ end }}{{ end }}
 
 {{with .Consts}}## <a name="pkg-constants">Constants</a>
-{{range .}}{{ .Snippet | pre}}
-{{comment_md .Doc}}{{end}}{{end}}
+{{range .}}{{comment_md .Doc}}
+{{ .Snippet | pre}}{{end}}{{end}}
 {{with .Vars}}## <a name="pkg-variables">Variables</a>
-{{range .}}{{ .Snippet | pre}}
-{{comment_md .Doc}}{{end}}{{end}}
+{{range .}}{{comment_md .Doc}}{{ .Snippet | pre}}{{end}}{{end}}
 
 {{range .Funcs}}## <a name="{{ .Name | slugify }}">func {{ .Name }}</a>
 {{ .Snippet | pre}}
@@ -59,7 +58,12 @@ Code:
 {{ .Snippet | pre}}{{ if .Output }}
 Output:
 {{ .Output | pre}}{{ end }}
+{{ comment_md .Doc}}{{ end }}{{end}}{{ end }}{{ with .Examples }}
+{{ range . }}
+## <a name="example-{{ .Name | slugify }}">Example {{ .Suffix }}</a>
+Code:
+{{ .Snippet | pre}}{{ if .Output }}
+Output:
+{{ .Output | pre}}{{ end }}
 {{ comment_md .Doc}}{{ end }}{{end}}
-
-{{ end }}
 `
